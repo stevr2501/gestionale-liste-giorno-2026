@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionale Liste Giorno 2026</title>
+    <!-- Tailwind CSS CDN per uno stile moderno e responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Microsoft Authentication Library (MSAL.js) per l'autenticazione con Microsoft -->
+    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <style>
+        /* Stili personalizzati per migliorare l'aspetto */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f3f4f6; /* Sfondo grigio chiaro */
+        }
+        .container {
+            max-width: 900px; /* Larghezza massima del contenitore principale */
+        }
+        .rounded-lg {
+            border-radius: 0.75rem; /* Bordi arrotondati */
+        }
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Ombra leggera */
+        }
+        /* Stili per i pulsanti */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s; /* Transizione fluida al passaggio del mouse */
+        }
+        .btn-primary {
+            background-color: #4f46e5; /* Viola Indaco */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca; /* Viola Indaco più scuro al hover */
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* Grigio scuro */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* Grigio più scuro al hover */
+        }
+        .btn-outline {
+            border: 1px solid #4f46e5;
+            color: #4f46e5;
+            background-color: white;
+        }
+        .btn-outline:hover {
+            background-color: #eef2ff; /* Sfondo molto chiaro al hover */
+        }
+        /* Stile per lo spinner di caricamento */
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite; /* Animazione di rotazione */
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Stili per gli elementi della lista file */
+        .file-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-item:hover {
+            background-color: #f0f0f0; /* Sfondo leggero al hover */
+        }
+        .file-item.selected {
+            background-color: #e0e7ff; /* Sfondo blu chiaro per l'elemento selezionato */
+            border-left: 4px solid #4f46e5; /* Bordo a sinistra per evidenziare */
+        }
+        /* Stili per nascondere le sezioni */
+        .hidden-section {
+            display: none;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container bg-white p-8 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-8">Gestionale Liste Giorno 2026</h1>
+
+        <!-- Sezione di Autenticazione -->
+        <div id="auth-section" class="text-center mb-8">
+            <button id="loginButton" class="btn btn-primary">Accedi con Microsoft</button>
+        </div>
+
+        <!-- Sezione Applicazione (visibile solo dopo il login) -->
+        <div id="app-section" class="hidden">
+            <p class="text-lg text-center mb-6">Benvenuto, <span id="userName" class="font-semibold text-indigo-600"></span>!</p>
+
+            <!-- Sezione Elenco File di OneDrive -->
+            <div class="bg-gray-50 p-6 rounded-lg shadow-inner mb-8">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">I tuoi file Excel su OneDrive</h2>
+                <div id="fileList" class="max-h-80 overflow-y-auto border border-gray-300 rounded-md bg-white">
+                    <p class="text-center py-4 text-gray-500">Caricamento file...</p>
+                </div>
+                <div id="fileListLoading" class="flex justify-center items-center py-4 hidden">
+                    <div class="loading-spinner"></div>
+                </div>
+                <p id="fileListError" class="text-red-600 text-sm mt-2 hidden">Errore nel caricamento dei file.</p>
+                <div id="selectedFileInfo" class="mb-4 text-gray-700 mt-4">
+                    <p>File selezionato: <span id="selectedFileName" class="font-medium text-indigo-700">Nessuno</span></p>
+                </div>
+            </div>
+
+            <!-- Sezione Menu Principale -->
+            <div id="main-menu-section" class="bg-white p-6 rounded-lg shadow-lg text-center">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-6">Menu Principale</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="btn-inserimento-appuntamento" class="btn btn-primary">Inserimento Appuntamento</button>
+                    <button id="btn-modifica-appuntamento" class="btn btn-primary">Modifica Appuntamento</button>
+                    <button id="btn-annulla-appuntamento" class="btn btn-primary">Annulla Appuntamento</button>
+                    <button id="btn-controllo-liste-giorno" class="btn btn-primary">Controllo Liste Giorno</button>
+                </div>
+                <button id="logoutButton" class="btn btn-secondary mt-8">Disconnetti</button>
+            </div>
+
+            <!-- Sezioni Funzionali (inizialmente nascoste) -->
+
+            <!-- Sezione Inserimento Appuntamento -->
+            <div id="appointment-insert-section" class="hidden-section bg-gray-50 p-6 rounded-lg shadow-inner mt-8">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">Inserimento Nuovo Appuntamento</h2>
+                <p class="text-gray-700 mb-4">Qui potrai inserire i dettagli per un nuovo appuntamento. (Funzionalità da implementare)</p>
+                <!-- Campi di input per data, ora, descrizione, ecc. verranno aggiunti qui -->
+                <button id="backToMenuFromInsert" class="btn btn-outline mt-4">Torna al Menu</button>
+            </div>
+
+            <!-- Sezione Modifica Appuntamento (riutilizza la logica di modifica cella) -->
+            <div id="appointment-modify-section" class="hidden-section bg-gray-50 p-6 rounded-lg shadow-inner mt-8">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">Modifica Appuntamento (Modifica Cella)</h2>
+                <p class="text-gray-700 mb-4">Per ora, puoi modificare una singola cella per un appuntamento. In futuro, questa sezione permetterà una modifica più completa.</p>
+                
+                <div class="mb-4">
+                    <label for="sheetNameInput" class="block text-sm font-medium text-gray-700 mb-1">Nome Foglio:</label>
+                    <select id="sheetNameInput" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 shadow-sm sm:text-sm bg-white" disabled>
+                        <option value="">Seleziona un foglio</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="cellAddressInput" class="block text-sm font-medium text-gray-700 mb-1">Indirizzo Cella (es. A1):</label>
+                        <input type="text" id="cellAddressInput" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 shadow-sm sm:text-sm" placeholder="A1" disabled>
+                    </div>
+                    <div>
+                        <label for="newValueInput" class="block text-sm font-medium text-gray-700 mb-1">Nuovo Valore:</label>
+                        <input type="text" id="newValueInput" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 shadow-sm sm:text-sm" placeholder="Inserisci valore" disabled>
+                    </div>
+                </div>
+
+                <button id="updateCellButton" class="btn btn-primary w-full mb-4" disabled>Aggiorna Cella</button>
+                <div id="updateLoading" class="flex justify-center items-center py-2 hidden">
+                    <div class="loading-spinner"></div>
+                </div>
+                <p id="updateStatus" class="text-center text-sm mt-2"></p>
+
+                <hr class="my-6 border-gray-300">
+
+                <h3 class="text-lg font-semibold text-indigo-600 mb-3">Modifica Manuale</h3>
+                <button id="openExcelOnlineButton" class="btn btn-outline w-full" disabled>Apri in Excel Online</button>
+
+                <button id="backToMenuFromModify" class="btn btn-outline mt-4">Torna al Menu</button>
+            </div>
+
+            <!-- Sezione Annulla Appuntamento -->
+            <div id="appointment-cancel-section" class="hidden-section bg-gray-50 p-6 rounded-lg shadow-inner mt-8">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">Annulla Appuntamento</h2>
+                <p class="text-gray-700 mb-4">Qui potrai selezionare e annullare un appuntamento esistente. (Funzionalità da implementare)</p>
+                <!-- Campi di input per identificare l'appuntamento da annullare -->
+                <button id="backToMenuFromCancel" class="btn btn-outline mt-4">Torna al Menu</button>
+            </div>
+
+            <!-- Sezione Controllo Liste Giorno -->
+            <div id="day-list-control-section" class="hidden-section bg-gray-50 p-6 rounded-lg shadow-inner mt-8">
+                <h2 class="text-xl font-semibold text-indigo-600 mb-4">Controllo Liste Giorno</h2>
+                <p class="text-gray-700 mb-4">Qui potrai visualizzare le liste degli appuntamenti per un giorno specifico. (Funzionalità da implementare)</p>
+                <!-- Campi di input per selezionare la data e visualizzare la lista -->
+                <button id="backToMenuFromControl" class="btn btn-outline mt-4">Torna al Menu</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Configurazione MSAL (Microsoft Authentication Library)
+        // DEVI REGISTRARE LA TUA APPLICAZIONE IN AZURE ACTIVE DIRECTORY
+        // E SOSTITUIRE 'YOUR_CLIENT_ID' CON L'ID CLIENTE DELLA TUA APP.
+        // Assicurati che 'YOUR_GITHUB_PAGES_URL' (es. https://tuo-nome-utente.github.io/nome-repository/)
+        // sia configurato come "Redirect URI" di tipo "Web" nella tua registrazione Azure AD.
+        const msalConfig = {
+            auth: {
+                clientId: 'YOUR_CLIENT_ID', // SOSTITUISCI CON IL TUO ID CLIENTE AZURE AD
+                authority: 'https://login.microsoftonline.com/common',
+                redirectUri: 'YOUR_GITHUB_PAGES_URL', // SOSTITUISCI CON L'URL PUBBLICO DI GITHUB PAGES
+            },
+            cache: {
+                cacheLocation: "sessionStorage", // Memorizza i token nella sessione del browser
+                storeAuthStateInCookie: false, // Non memorizzare lo stato di autenticazione nei cookie
+            }
+        };
+
+        // Scopes (permessi) richiesti per accedere a OneDrive e Excel API
+        const loginRequest = {
+            scopes: ["User.Read", "Files.Read", "Files.ReadWrite", "Sites.ReadWrite.All", "offline_access"]
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Elementi DOM
+        const authSection = document.getElementById('auth-section');
+        const appSection = document.getElementById('app-section');
+        const loginButton = document.getElementById('loginButton');
+        const logoutButton = document.getElementById('logoutButton');
+        const userNameSpan = document.getElementById('userName');
+        const fileListDiv = document.getElementById('fileList');
+        const fileListLoading = document.getElementById('fileListLoading');
+        const fileListError = document.getElementById('fileListError');
+        const selectedFileNameSpan = document.getElementById('selectedFileName');
+        const sheetNameInput = document.getElementById('sheetNameInput');
+        const cellAddressInput = document.getElementById('cellAddressInput');
+        const newValueInput = document.getElementById('newValueInput');
+        const updateCellButton = document.getElementById('updateCellButton');
+        const updateLoading = document.getElementById('updateLoading');
+        const updateStatus = document.getElementById('updateStatus');
+        const openExcelOnlineButton = document.getElementById('openExcelOnlineButton');
+
+        // Nuovi elementi DOM per il menu e le sezioni
+        const mainMenuSection = document.getElementById('main-menu-section');
+        const btnInserimentoAppuntamento = document.getElementById('btn-inserimento-appuntamento');
+        const btnModificaAppuntamento = document.getElementById('btn-modifica-appuntamento');
+        const btnAnnullaAppuntamento = document.getElementById('btn-annulla-appuntamento');
+        const btnControlloListeGiorno = document.getElementById('btn-controllo-liste-giorno');
+
+        const appointmentInsertSection = document.getElementById('appointment-insert-section');
+        const appointmentModifySection = document.getElementById('appointment-modify-section');
+        const appointmentCancelSection = document.getElementById('appointment-cancel-section');
+        const dayListControlSection = document.getElementById('day-list-control-section');
+
+        const backToMenuFromInsert = document.getElementById('backToMenuFromInsert');
+        const backToMenuFromModify = document.getElementById('backToMenuFromModify');
+        const backToMenuFromCancel = document.getElementById('backToMenuFromCancel');
+        const backToMenuFromControl = document.getElementById('backToMenuFromControl');
+
+
+        let accessToken = null;
+        let selectedFileId = null;
+        let selectedFileWebUrl = null;
+
+        // --- Funzioni di Autenticazione ---
+
+        async function signIn() {
+            try {
+                // Tenta l'accesso silenzioso (se l'utente era già loggato)
+                const silentResult = await msalInstance.ssoSilent(loginRequest);
+                handleLoginSuccess(silentResult);
+            } catch (error) {
+                // Se l'accesso silenzioso fallisce, tenta l'accesso tramite popup
+                console.warn("Silent login failed, attempting interactive login:", error);
+                try {
+                    const loginResult = await msalInstance.loginPopup(loginRequest);
+                    handleLoginSuccess(loginResult);
+                } catch (interactiveError) {
+                    console.error("Interactive login failed:", interactiveError);
+
+                    if (interactiveError.errorCode === "user_cancelled") {
+                        // L'utente ha annullato esplicitamente, non mostrare un alert
+                        console.log("Accesso annullato dall'utente.");
+                    } else if (interactiveError.errorCode === "popup_window_error") {
+                        // Se il popup è bloccato, informa l'utente e suggerisci di sbloccarlo
+                        messagebox("showerror", "Finestra Popup Bloccata", "Impossibile aprire la finestra di accesso. Assicurati che i popup non siano bloccati dal tuo browser o da estensioni. Prova ad aggiungere l'URL dell'applicazione (che sarà l'URL di GitHub Pages) alle eccezioni dei popup o a disabilitare temporaneamente il blocco.");
+                    } else if (interactiveError.errorCode === "redirect_in_iframe") {
+                        // Questo errore si verifica se l'app è in un iframe e si tenta un redirect
+                        messagebox("showerror", "Errore di Reindirizzamento", "L'applicazione non può reindirizzare la pagina all'interno di un iframe. Per favore, apri l'applicazione direttamente in una nuova scheda del browser (fuori da qualsiasi sandbox o iframe) per effettuare l'accesso.");
+                    }
+                    else {
+                        messagebox("showerror", "Errore di Accesso", `Si è verificato un errore durante l'accesso: ${interactiveError.message}. Riprova.`);
+                    }
+                }
+            }
+        }
+
+        function handleLoginSuccess(response) {
+            accessToken = response.accessToken;
+            userNameSpan.textContent = response.account.name;
+            authSection.classList.add('hidden');
+            appSection.classList.remove('hidden');
+            loadOneDriveFiles(); // Carica i file una volta loggato
+        }
+
+        function signOut() {
+            msalInstance.logoutPopup();
+            accessToken = null;
+            authSection.classList.remove('hidden');
+            appSection.classList.add('hidden');
+            fileListDiv.innerHTML = '<p class="text-center py-4 text-gray-500">Caricamento file...</p>';
+            selectedFileNameSpan.textContent = 'Nessuno';
+            selectedFileId = null;
+            selectedFileWebUrl = null;
+            sheetNameInput.innerHTML = '<option value="">Seleziona un foglio</option>';
+            sheetNameInput.disabled = true;
+            cellAddressInput.disabled = true;
+            newValueInput.disabled = true;
+            updateCellButton.disabled = true;
+            openExcelOnlineButton.disabled = true;
+            updateStatus.textContent = '';
+
+            // Nascondi tutte le sezioni e mostra il menu principale
+            showSection(mainMenuSection);
+        }
+
+        // --- Funzioni per l'API Microsoft Graph ---
+
+        async function callMsGraph(endpoint, method = 'GET', body = null) {
+            if (!accessToken) {
+                console.error("Access token non disponibile.");
+                messagebox("showerror", "Errore di Autenticazione", "Access token non disponibile. Riprova ad accedere.");
+                return null;
+            }
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Errore API Graph: ${response.status} - ${errorData.error.message}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Errore nella chiamata all'API Graph:", error);
+                throw error; // Propaga l'errore per la gestione nell'interfaccia utente
+            }
+        }
+
+        async function loadOneDriveFiles() {
+            fileListDiv.innerHTML = '';
+            fileListLoading.classList.remove('hidden');
+            fileListError.classList.add('hidden');
+
+            try {
+                // Ottieni i file dalla cartella radice di OneDrive, filtrando per file Excel
+                const endpoint = 'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=file/mimeType eq \'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\'';
+                const response = await callMsGraph(endpoint);
+                
+                if (response && response.value && response.value.length > 0) {
+                    response.value.forEach(file => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'file-item p-3 border-b border-gray-200 last:border-b-0';
+                        fileItem.textContent = file.name;
+                        fileItem.dataset.fileId = file.id;
+                        fileItem.dataset.webUrl = file.webUrl;
+                        fileItem.addEventListener('click', () => selectFile(fileItem, file.id, file.name, file.webUrl));
+                        fileListDiv.appendChild(fileItem);
+                    });
+                } else {
+                    fileListDiv.innerHTML = '<p class="text-center py-4 text-gray-500">Nessun file Excel trovato su OneDrive.</p>';
+                }
+            } catch (error) {
+                fileListError.textContent = `Errore nel caricamento dei file: ${error.message}`;
+                fileListError.classList.remove('hidden');
+                fileListDiv.innerHTML = '<p class="text-center py-4 text-gray-500">Errore nel caricamento dei file.</p>';
+            } finally {
+                fileListLoading.classList.add('hidden');
+            }
+        }
+
+        async function selectFile(selectedElement, fileId, fileName, webUrl) {
+            // Rimuovi la classe 'selected' da tutti gli elementi
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            // Aggiungi la classe 'selected' all'elemento cliccato
+            selectedElement.classList.add('selected');
+
+            selectedFileId = fileId;
+            selectedFileWebUrl = webUrl;
+            selectedFileNameSpan.textContent = fileName;
+            updateStatus.textContent = ''; // Resetta lo stato dell'aggiornamento
+
+            // Abilita i campi di input e i pulsanti nella sezione di modifica
+            sheetNameInput.disabled = false;
+            cellAddressInput.disabled = false;
+            newValueInput.disabled = false;
+            updateCellButton.disabled = false;
+            openExcelOnlineButton.disabled = false;
+
+            // Carica i nomi dei fogli del file Excel
+            await loadExcelWorksheets(fileId);
+        }
+
+        async function loadExcelWorksheets(fileId) {
+            sheetNameInput.innerHTML = '<option value="">Caricamento fogli...</option>';
+            sheetNameInput.disabled = true;
+
+            try {
+                const endpoint = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/worksheets`;
+                const response = await callMsGraph(endpoint);
+                
+                sheetNameInput.innerHTML = ''; // Pulisci le opzioni esistenti
+                if (response && response.value && response.value.length > 0) {
+                    response.value.forEach(sheet => {
+                        const option = document.createElement('option');
+                        option.value = sheet.name;
+                        option.textContent = sheet.name;
+                        sheetNameInput.appendChild(option);
+                    });
+                    sheetNameInput.disabled = false;
+                } else {
+                    const option = document.createElement('option');
+                    option.value = "";
+                    option.textContent = "Nessun foglio trovato";
+                    sheetNameInput.appendChild(option);
+                    sheetNameInput.disabled = true;
+                    messagebox("showwarning", "Avviso", "Nessun foglio trovato nel file Excel selezionato.");
+                }
+            } catch (error) {
+                messagebox("showerror", "Errore Fogli", `Impossibile caricare i fogli: ${error.message}`);
+                sheetNameInput.innerHTML = '<option value="">Errore caricamento fogli</option>';
+                sheetNameInput.disabled = true;
+            }
+        }
+
+        async function updateExcelCell() {
+            if (!selectedFileId) {
+                messagebox("showwarning", "Selezione File", "Seleziona prima un file Excel dalla lista.");
+                return;
+            }
+
+            const sheetName = sheetNameInput.value;
+            const cellAddress = cellAddressInput.value.trim();
+            const newValue = newValueInput.value;
+
+            if (!sheetName || !cellAddress) {
+                messagebox("showwarning", "Input Mancanti", "Inserisci il nome del foglio e l'indirizzo della cella.");
+                return;
+            }
+
+            updateStatus.textContent = '';
+            updateLoading.classList.remove('hidden');
+            updateCellButton.disabled = true; // Disabilita il pulsante durante l'aggiornamento
+
+            try {
+                // Endpoint per aggiornare il valore di una cella specifica
+                // L'API Excel di Graph richiede un array di array per i valori
+                const endpoint = `https://graph.microsoft.com/v1.0/me/drive/items/${selectedFileId}/workbook/worksheets('${sheetName}')/range(address='${cellAddress}')`;
+                
+                await callMsGraph(endpoint, 'PATCH', {
+                    values: [[newValue]] // I valori devono essere un array di array (anche per una singola cella)
+                });
+
+                updateStatus.textContent = `Cella ${cellAddress} aggiornata con successo!`;
+                updateStatus.style.color = 'green';
+            } catch (error) {
+                updateStatus.textContent = `Errore: ${error.message}`;
+                updateStatus.style.color = 'red';
+                console.error("Errore nell'aggiornamento della cella:", error);
+            } finally {
+                updateLoading.classList.add('hidden');
+                updateCellButton.disabled = false; // Riabilita il pulsante
+            }
+        }
+
+        function openSelectedExcelOnline() {
+            if (selectedFileWebUrl) {
+                // L'URL web del file di OneDrive lo aprirà direttamente in Excel Online
+                window.open(selectedFileWebUrl, '_blank');
+            } else {
+                messagebox("showwarning", "Selezione File", "Seleziona prima un file Excel dalla lista.");
+            }
+        }
+
+        // --- Funzioni per la navigazione tra le sezioni ---
+        function hideAllSections() {
+            mainMenuSection.classList.add('hidden-section');
+            appointmentInsertSection.classList.add('hidden-section');
+            appointmentModifySection.classList.add('hidden-section');
+            appointmentCancelSection.classList.add('hidden-section');
+            dayListControlSection.classList.add('hidden-section');
+        }
+
+        function showSection(sectionElement) {
+            hideAllSections();
+            sectionElement.classList.remove('hidden-section');
+        }
+
+        // --- Event Listeners ---
+        loginButton.addEventListener('click', signIn);
+        logoutButton.addEventListener('click', signOut);
+        updateCellButton.addEventListener('click', updateExcelCell);
+        openExcelOnlineButton.addEventListener('click', openSelectedExcelOnline);
+
+        // Event listener per i pulsanti del menu
+        btnInserimentoAppuntamento.addEventListener('click', () => showSection(appointmentInsertSection));
+        btnModificaAppuntamento.addEventListener('click', () => showSection(appointmentModifySection));
+        btnAnnullaAppuntamento.addEventListener('click', () => showSection(appointmentCancelSection));
+        btnControlloListeGiorno.addEventListener('click', () => showSection(dayListControlSection));
+
+        // Event listener per i pulsanti "Torna al Menu"
+        backToMenuFromInsert.addEventListener('click', () => showSection(mainMenuSection));
+        backToMenuFromModify.addEventListener('click', () => showSection(mainMenuSection));
+        backToMenuFromCancel.addEventListener('click', () => showSection(mainMenuSection));
+        backToMenuFromControl.addEventListener('click', () => showSection(mainMenuSection));
+
+
+        // Inizializza l'applicazione al caricamento della pagina
+        // Tenta l'accesso silenzioso all'avvio
+        msalInstance.handleRedirectPromise().then((response) => {
+            if (response) {
+                handleLoginSuccess(response);
+            } else {
+                // Nessun reindirizzamento, controlla se c'è un account nella cache
+                const currentAccounts = msalInstance.getAllAccounts();
+                if (currentAccounts.length > 0) {
+                    msalInstance.acquireTokenSilent({
+                        account: currentAccounts[0],
+                        scopes: loginRequest.scopes
+                    }).then(handleLoginSuccess).catch(error => {
+                        console.warn("Silent token acquisition failed, user needs to login:", error);
+                        authSection.classList.remove('hidden');
+                        appSection.classList.add('hidden');
+                    });
+                } else {
+                    authSection.classList.remove('hidden');
+                    appSection.classList.add('hidden');
+                }
+            }
+        }).catch((error) => {
+            console.error("Error handling redirect:", error);
+            messagebox("showerror", "Errore di Inizializzazione", "Si è verificato un errore durante l'inizializzazione dell'applicazione.");
+            authSection.classList.remove('hidden');
+            appSection.classList.add('hidden');
+        });
+
+        // Funzione per mostrare messaggi (sostituisce alert/confirm)
+        // In un'applicazione reale, useresti un modal HTML/CSS per una migliore UX.
+        function messagebox(type, title, message) {
+            if (type === "showerror") {
+                alert(`Errore: ${title}\n\n${message}`);
+            } else if (type === "showwarning") {
+                alert(`Avviso: ${title}\n\n${message}`);
+            } else if (type === "showinfo") {
+                alert(`Info: ${title}\n\n${message}`);
+            }
+        }
+
+    </script>
+</body>
+</html>
