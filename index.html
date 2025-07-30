@@ -270,7 +270,8 @@
                 } catch (redirectError) {
                     console.error("Accesso tramite reindirizzamento fallito:", redirectError);
                     if (redirectError.errorCode === "redirect_in_iframe") {
-                        messagebox("showerror", "Errore di Reindirizzamento", "L'applicazione non può reindirizzare la pagina all'interno di un iframe. Per favore, apri l'applicazione direttamente in una nuova scheda del browser (fuori da qualsiasi sandbox o iframe) per effettuare l'accesso.");
+                        // Messaggio di errore più chiaro per l'utente
+                        messagebox("showerror", "Errore: Apri l'App Direttamente", "L'applicazione non può eseguire l'accesso all'interno di un'anteprima o di un iframe. Per favore, **copia l'URL della tua applicazione (mostrato nella barra degli indirizzi del tuo browser) e incollalo in una NUOVA SCHEDA o FINESTRA del browser** per effettuare l'accesso. Non aprirla tramite link interni o anteprime.");
                     } else {
                         messagebox("showerror", "Errore di Accesso", `Si è verificato un errore durante l'accesso: ${redirectError.message}. Riprova.`);
                     }
