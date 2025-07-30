@@ -261,26 +261,18 @@
                 const silentResult = await msalInstance.ssoSilent(loginRequest);
                 handleLoginSuccess(silentResult);
             } catch (error) {
-                // Se l'accesso silenzioso fallisce, tenta l'accesso tramite popup
-                console.warn("Silent login failed, attempting interactive login:", error);
+                // Se l'accesso silenzioso fallisce, tenta l'accesso tramite reindirizzamento dell'intera pagina
+                console.warn("Accesso silenzioso fallito, tentativo di accesso tramite reindirizzamento:", error);
                 try {
-                    const loginResult = await msalInstance.loginPopup(loginRequest);
-                    handleLoginSuccess(loginResult);
-                } catch (interactiveError) {
-                    console.error("Interactive login failed:", interactiveError);
-
-                    if (interactiveError.errorCode === "user_cancelled") {
-                        // L'utente ha annullato esplicitamente, non mostrare un alert
-                        console.log("Accesso annullato dall'utente.");
-                    } else if (interactiveError.errorCode === "popup_window_error") {
-                        // Se il popup è bloccato, informa l'utente e suggerisci di sbloccarlo
-                        messagebox("showerror", "Finestra Popup Bloccata", "Impossibile aprire la finestra di accesso. Assicurati che i popup non siano bloccati dal tuo browser o da estensioni. Prova ad aggiungere l'URL dell'applicazione (che sarà l'URL di GitHub Pages) alle eccezioni dei popup o a disabilitare temporaneamente il blocco.");
-                    } else if (interactiveError.errorCode === "redirect_in_iframe") {
-                        // Questo errore si verifica se l'app è in un iframe e si tenta un redirect
+                    // Esegue il reindirizzamento dell'intera pagina per l'autenticazione
+                    await msalInstance.loginRedirect(loginRequest);
+                    // handleLoginSuccess verrà chiamato dopo il reindirizzamento e il ritorno alla pagina
+                } catch (redirectError) {
+                    console.error("Accesso tramite reindirizzamento fallito:", redirectError);
+                    if (redirectError.errorCode === "redirect_in_iframe") {
                         messagebox("showerror", "Errore di Reindirizzamento", "L'applicazione non può reindirizzare la pagina all'interno di un iframe. Per favore, apri l'applicazione direttamente in una nuova scheda del browser (fuori da qualsiasi sandbox o iframe) per effettuare l'accesso.");
-                    }
-                    else {
-                        messagebox("showerror", "Errore di Accesso", `Si è verificato un errore durante l'accesso: ${interactiveError.message}. Riprova.`);
+                    } else {
+                        messagebox("showerror", "Errore di Accesso", `Si è verificato un errore durante l'accesso: ${redirectError.message}. Riprova.`);
                     }
                 }
             }
@@ -295,6 +287,9 @@
         }
 
         function signOut() {
+            // Per il logout, possiamo ancora usare logoutPopup se preferito,
+            // altrimenti si può usare logoutRedirect per un reindirizzamento completo.
+            // Per semplicità, manteniamo logoutPopup che è meno invasivo.
             msalInstance.logoutPopup();
             accessToken = null;
             authSection.classList.remove('hidden');
